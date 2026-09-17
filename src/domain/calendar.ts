@@ -1,5 +1,5 @@
 import ICAL from 'ical.js';
-import { classifyShiftDay, standardShiftHours, detectShiftTitle, normalizedShiftTitle, isGuardEventTitle } from './engine';
+import { addMonth, classifyShiftDay, standardShiftHours, detectShiftTitle, normalizedShiftTitle, isGuardEventTitle } from './engine';
 import { shiftSchema, type Shift, type Settings } from './model';
 
 export type CalendarEvent={id:string;date:string;title:string;start:string;end:string;allDay:boolean;cancelled?:boolean};
@@ -21,7 +21,7 @@ export function parseCalendar(text:string,year:number,s:Settings){
  const root=new ICAL.Component(ICAL.parse(text));
  for(const zone of root.getAllSubcomponents('vtimezone')){const id=zone.getFirstPropertyValue('tzid');if(id)ICAL.TimezoneService.register(new ICAL.Timezone(zone),String(id));}
  const components=root.getAllSubcomponents('vevent');const notes:string[]=[];const shifts:Shift[]=[];const observations:{key:string;kind:string;date:string;shift?:Shift}[]=[];const seen=new Set<string>();
- const from=`${year-1}-12-01`,until=`${year+1}-01-01`;
+ const from=`${addMonth(`${year}-01`,-s.payDelay)}-01`,until=`${year+1}-01-01`;
  const exceptions=new Map<string,ICAL.Event[]>();
  for(const c of components){if(c.hasProperty('recurrence-id')){const e=new ICAL.Event(c);exceptions.set(e.uid,[...(exceptions.get(e.uid)??[]),e]);}}
  let iterations=0;
@@ -57,7 +57,7 @@ export function parseCalendar(text:string,year:number,s:Settings){
  const cancelled=shifts.filter(x=>x.status==='excluded').length;if(cancelled)notes.push(`${cancelled} eventos cancelados; comprueba si sustituyen guardias ya cargadas.`);
  const ambiguous=shifts.filter(x=>detectShiftTitle(x.title,s).ambiguous).length;if(ambiguous)notes.push(`${ambiguous} eventos tienen un horario ambiguo. Revisa sus horas antes de confirmarlos.`);
  if(year!==2026)notes.push('Festivos locales y autonómicos verificados solo para 2026. Revisa los de este ejercicio.');
- notes.push('Se importan guardias del año elegido y diciembre anterior. Los salientes no son guardias.');
+ notes.push(`Se importan guardias desde el ${from.split('-').reverse().join('/')} hasta el 31/12/${year}, según el retraso de cobro configurado. Los salientes no son guardias.`);
  return {shifts:shifts.sort((a,b)=>a.date.localeCompare(b.date)),notes,observations,from,until};
 }
 export function mergeShifts(existing:Shift[],incoming:Shift[],replace=false){

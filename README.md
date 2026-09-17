@@ -25,7 +25,22 @@ Las previsiones y los recibos confirmados se conservan por separado: cambiar una
 5. Introduce lo cobrado o importa un PDF y revisa su extracción antes de guardarlo. El lector no hace OCR: los documentos escaneados o no reconocidos permiten entrada manual.
 6. Exporta periódicamente una copia JSON desde **Ajustes → Copias e historial**. Hay veinte versiones anteriores recuperables dentro del dispositivo. **Desinstalar elimina los datos locales**; la copia externa permite recuperarlos.
 
-La conexión iCal se consulta al abrir o volver a la app, con intervalo mínimo de cinco minutos, y mediante botón. Necesita internet; su fallo no borra los datos guardados. No hay sincronización entre dispositivos ni actualización en segundo plano garantizada.
+## Conectar tus guardias de Google Calendar
+
+**Obtén el enlace desde un PC, abriendo Google Calendar en el navegador.** Después lo conectarás en Mi nómina desde el móvil.
+
+1. En el PC, abre [Google Calendar](https://calendar.google.com/) con la cuenta donde tienes tus guardias.
+2. Pulsa la rueda dentada de arriba a la derecha y entra en **Configuración**.
+3. En **Configuración de mis calendarios**, a la izquierda, selecciona el calendario de tus guardias.
+4. Abre **Integrar el calendario** y copia la **Dirección secreta en formato iCal**. No necesitas hacer público el calendario. Si esa opción no aparece en una cuenta de trabajo o de estudios, puede estar restringida por su administrador. [Ayuda oficial de Google](https://support.google.com/calendar/answer/37648?hl=es).
+5. Pasa el enlace a tu móvil por un medio privado. En Mi nómina, abre **Guardias → Calendario → Conectar Google Calendar por enlace** y pégalo en **Dirección secreta iCal**.
+6. Pulsa **Conectar y revisar**. Comprueba las fechas, horas y decisiones propuestas; termina con **Guardar decisiones**.
+
+El enlace permite leer ese calendario: trátalo como una contraseña y no lo publiques ni lo incluyas en capturas. Si lo compartes por error, cámbialo desde Google Calendar y vuelve a conectar la app.
+
+Mi nómina solo lee el calendario; no modifica sus eventos. Consulta los cambios al abrir o volver a la app, con un intervalo mínimo de cinco minutos. También puedes pulsar **Leer cambios** en esa misma pantalla. Si falla la conexión, tus datos guardados se conservan. No hay sincronización entre dispositivos ni actualización en segundo plano garantizada.
+
+Si prefieres no conectar un enlace, utiliza **Guardias → Calendario → Importar archivo ICS**. Esta importación es puntual: tendrás que repetirla para incorporar cambios. Si llevas una copia a otro móvil, tendrás que conectar allí el enlace de nuevo; no se incluye en el JSON.
 
 ## Tablas y límites del cálculo
 
@@ -40,60 +55,15 @@ El repositorio utiliza tablas públicas y datos de prueba sintéticos. No incluy
 
 ## Privacidad
 
-El cálculo y el almacenamiento son locales: SQLite en Android e IndexedDB en la vista de desarrollo del navegador. No hay cuenta, analítica ni servidor propio; no depende de ChatGPT, Sites ni Cloudflare. Los PDF se procesan localmente y no se conserva su original ni el texto identificativo.
+Los cálculos y los datos se guardan en tu dispositivo. No hay cuenta, analítica ni servidor propio. Los PDF se procesan localmente y no se conserva su original ni el texto identificativo.
 
 La única conexión opcional de datos es la lectura del calendario de Google que configures. Su enlace se protege con Android Keystore y no se incluye en copias JSON. Las fuentes externas se abren en el navegador al solicitarlas. Las copias JSON/CSV sí contienen los datos que introduzcas: guárdalas como documentos privados. Más detalles en [privacidad](docs/PRIVACIDAD.md).
 
-## Desarrollo
+## Ayuda y contribuciones
 
-React, TypeScript y Vite; Capacitor 8 para Android; SQLite, PDF.js con worker local y una tipografía incluida en el paquete. **Node 22.13 o posterior** y npm. El empaquetado del ZIP también necesita Python 3. Ejecuta los comandos desde la raíz de este repositorio:
+Para comunicar un fallo o proponer mejoras, consulta [cómo contribuir](CONTRIBUIR.md). Usa ejemplos inventados y evita adjuntar nóminas, calendarios o copias personales.
 
-```sh
-npm ci
-npm run dev
-```
-
-La vista de navegador facilita el desarrollo, pero usa un almacenamiento separado y no sustituye la prueba de los selectores de documentos, Keystore o SQLite de Android.
-
-```sh
-npm test
-npm run build
-npm run test:e2e
-npm run check:public
-```
-
-Las pruebas de navegador usan Chrome en `/usr/bin/google-chrome`; si está instalado en otro lugar, define `NOMINA_CHROME_PATH`. `test:e2e` necesita la compilación de `npm run build`. El worker PDF también puede probarse desde `/tests/pdf-integration.html?legacy=1` con el servidor de desarrollo activo.
-
-Para Android instala **JDK 21, Android SDK Platform 36, Build Tools 35.0.0 y Platform Tools**. Configura `JAVA_HOME` y `ANDROID_HOME`:
-
-```sh
-npm run build
-npx cap sync android
-npm run android:build
-```
-
-El último comando genera un APK de depuración. La firma de distribución se configura aparte y permanece fuera del repositorio: [compilación, firma e instalación](docs/ANDROID.md).
-
-## Organización
-
-```text
-src/domain/     Cálculo, calendario, reglas, recibos y migración
-src/services/   Operaciones locales, documentos e historial
-src/platform/   Persistencia Android y navegador
-src/           Pantallas y estilos
-android/       Proyecto nativo y puente de documentos/Keystore
-tests/         Casos sintéticos y recorridos de navegador
-scripts/       Compilación y comprobaciones de distribución
-docs/          Fuentes, privacidad y documentación Android
-```
-
-## Compartir y contribuir
-
-Publica el contenido de esta carpeta como raíz del repositorio. `npm run check:public` revisa patrones sensibles y archivos excluidos; `npm run package:public` prepara un ZIP del código publicable dentro de `releases/`. Revisa también lo que hayas añadido: una comprobación automática no identifica todos los datos personales posibles.
-
-Los pasos para crear el repositorio y subirlo están en [publicar en GitHub](docs/PUBLICAR.md).
-
-Consulta [cómo contribuir](CONTRIBUIR.md) antes de aportar ejemplos o cambios de cálculo. Los resultados ejecutados y las comprobaciones pendientes se recogen en [verificación](docs/VERIFICACION.md). Las pruebas de navegador y el análisis del APK no acreditan por sí solos el funcionamiento en todos los teléfonos.
+La documentación técnica está separada: [desarrollo](docs/DESARROLLO.md), [compilación e instalación Android](docs/ANDROID.md), [pruebas realizadas](docs/VERIFICACION.md) y [publicación en GitHub](docs/PUBLICAR.md).
 
 ## Licencia
 
