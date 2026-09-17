@@ -1,0 +1,47 @@
+{
+  "name": "mi-nomina-android",
+  "version": "1.0.1",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "android:sync": "npm run build && cap sync android",
+    "test:e2e": "playwright test",
+    "android:build": "bash scripts/build-android.sh",
+    "check:public": "node scripts/check-public.mjs",
+    "package:public": "node scripts/package-public.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "8.1.1",
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.2",
+    "@fontsource/ibm-plex-mono": "5.2.7",
+    "ical.js": "2.2.1",
+    "lucide-react": "1.31.0",
+    "pdfjs-dist": "5.4.624",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "fake-indexeddb": "6.2.5",
+    "typescript": "5.9.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
+  },
+  "description": "Calculadora Android local para médicos residentes MIR R1–R5 del SERMAS, Comunidad de Madrid."
+}
