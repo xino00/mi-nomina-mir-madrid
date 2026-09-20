@@ -32,6 +32,7 @@ export function classifyShiftDay(date:string,centre:string,s?:Settings):{type:Sh
 export function suggestedType(date:string,centre:string,s?:Settings):Shift['type']{return classifyShiftDay(date,centre,s).type;}
 export function standardShiftHours(centre:Shift['centre'],type:Shift['type'],s:Settings,title=''){
  const configured=s.centres.find(c=>c.id===centre);
+ if(configured?.scheduleMode==='custom')return type==='labour'?configured.labourHours:configured.festiveHours;
  const named=detectShiftTitle(title),selected=detectShiftTitle(configured?.name??centre);
  const torrelodones=(!named.ambiguous&&named.centre==='SAR Torrelodones')||(!selected.ambiguous&&selected.centre==='SAR Torrelodones');
  // The only timetable exception is Torrelodones on working days. Centre

@@ -23,13 +23,21 @@ Las previsiones y los recibos confirmados se conservan por separado: cambiar una
 ## Empezar a usarla
 
 1. Abre la [WebApp](https://xino00.github.io/mi-nomina-mir-madrid/) con conexión y deja que termine la carga inicial. Para la aplicación nativa, consulta [Android](docs/ANDROID.md).
-2. Configura inicio y fin previstos de residencia, fechas de cambio R1–R5, centros y municipio. La app comienza sin nóminas ni guardias personales precargadas.
+2. Selecciona **MFyC · FJD** en **Perfil inicial** o configura tus centros desde cero. Configura inicio y fin previstos de residencia, fechas de cambio R1–R5, centros y municipio. La app comienza sin nóminas ni guardias personales precargadas.
 3. Revisa horarios, festivos, desfase de cobro e IRPF. Los calendarios incompletos requieren revisión; un centro no hereda automáticamente los festivos de Madrid capital.
 4. Añade tus guardias o importa un archivo ICS. No es obligatorio que cada evento identifique el hospital. La regla inicial de horas es 17 h laborables y 24 h en fines de semana/festivos, con 11 h en Torrelodones laborable; Cercedilla usa el horario general. **Son ajustes operativos de la app, no una regla horaria universal del BOCM.** Comprueba tu jornada y corrige las horas necesarias; los cambios manuales se conservan.
 5. Introduce lo cobrado o importa un PDF y revisa su extracción antes de guardarlo. El lector no hace OCR: los documentos escaneados o no reconocidos permiten entrada manual.
 6. Exporta periódicamente una copia JSON desde **Ajustes → Copias e historial**. Hay veinte versiones anteriores recuperables dentro del navegador. **Borrar los datos del sitio elimina tanto los datos como ese historial**; la copia externa permite recuperarlos. Evita usar navegación privada para conservar tus registros.
 
 Para recibir una actualización, guarda los cambios, cierra todas las pestañas de Mi nómina y vuelve a abrirla con conexión. Una versión nueva no fuerza la recarga de un formulario abierto.
+
+## Perfiles de condiciones
+
+En **Ajustes → Perfiles de condiciones → Seleccionar o crear perfil** puedes aplicar el predefinido **MFyC · FJD**, duplicarlo, guardar tus condiciones actuales o crear un perfil desde cero. Los perfiles propios se pueden editar y eliminar; se guardan únicamente en tu dispositivo y en tus copias JSON.
+
+MFyC · FJD incluye Fundación Jiménez Díaz (Madrid), SAR Cercedilla y SAR Torrelodones; 17/24 h en hospital y Cercedilla, 11/24 h en Torrelodones y cobro con un mes de retraso. Es una configuración de trabajo editable, no una certificación de condiciones laborales del centro. Las fechas personales, IRPF, salario y recibos no forman parte de la plantilla.
+
+Al aplicar un perfil, las guardias existentes conservan sus horas y los recibos cobrados permanecen intactos. Los centros usados se conservan para el histórico; las nuevas importaciones reconocen los centros activos. Cambiar el retraso de cobro puede modificar las previsiones por mes. [Detalle y compatibilidad de copias](docs/WEBAPP.md#perfiles-de-condiciones).
 
 ## Conectar tus guardias de Google Calendar
 

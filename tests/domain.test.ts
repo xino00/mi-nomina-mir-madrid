@@ -203,9 +203,9 @@ describe('Neto cobrado, documentos y simulación',()=>{
 });
 
 describe('Copias versionadas',()=>{
- it('exporta e importa v2 sin cambios',()=>{
+ it('exporta e importa v3 sin cambios',()=>{
   const s=profile();s.shifts=[shift(s)];s.months['2026-09']=saveReceipt(blankMonth(),actual);
-  const result=parseBackup(exportBackup(s));expect(result.version).toBe(2);expect(result.state).toEqual(s);expect(result.summary).toEqual({shifts:1,receipts:1});
+  const result=parseBackup(exportBackup(s));expect(result.version).toBe(3);expect(result.state).toEqual(s);expect(result.summary).toEqual({shifts:1,receipts:1});
  });
  it('migra v1 conservando recibos, fechas y centros originales',()=>{
   const source=profile();const legacy=JSON.parse(JSON.stringify(source));delete legacy.settings.centres;delete legacy.settings.gradeDates;delete legacy.settings.residencyEnd;delete legacy.settings.profileComplete;
@@ -216,7 +216,7 @@ describe('Copias versionadas',()=>{
   expect(result.warnings).toHaveLength(2);expect(migrateLegacyState(legacy).settings.residencyEnd).toBe('2029-06-30');
  });
  it('rechaza versiones futuras, estructura inválida y JSON incompleto',()=>{
-  expect(()=>parseBackup({format:'mi-nomina-guardias',version:3,state:profile()})).toThrow(/Versión/);
+  expect(()=>parseBackup({format:'mi-nomina-guardias',version:4,state:profile()})).toThrow(/Versión/);
   expect(()=>parseBackup({format:'mi-nomina-guardias',version:2,state:{}})).toThrow();expect(()=>parseBackup('{')).toThrow(/JSON/);
  });
  it('excluye enlaces privados incluso en procedencia heredada',()=>{

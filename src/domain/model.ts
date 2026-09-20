@@ -9,12 +9,22 @@ export const rates2027=[{labour:13.78,festive:16.39,special:32.78},{labour:16.54
 export const centreSchema = z.object({
   id:z.string().min(1).max(100), name:z.string().min(1).max(100), municipality:z.string().min(1).max(100),
   labourHours:z.number().finite().min(.25).max(48), festiveHours:z.number().finite().min(.25).max(48),
+  scheduleMode:z.enum(['general','custom']).optional(),
+  archived:z.boolean().optional(),
   aliases:z.array(z.string().min(1).max(100)).max(30),
   localHolidays:z.record(z.string().regex(/^20\d{2}$/),z.array(date).max(20)).default({}),
 }).superRefine((c,ctx)=>{for(const [year,dates] of Object.entries(c.localHolidays))if(dates.some(d=>!d.startsWith(year+'-')))ctx.addIssue({code:'custom',message:'El festivo local no pertenece al año indicado'});});
 export type Centre=z.infer<typeof centreSchema>;
+export const workProfileSchema=z.object({
+  id:z.string().trim().min(1).max(100),name:z.string().trim().min(1).max(100),
+  residencyYears:z.union([z.literal(4),z.literal(5)]),centres:z.array(centreSchema).min(1).max(30),
+  defaultLabourHours:z.number().finite().min(1).max(24),defaultFestiveHours:z.number().finite().min(1).max(24),
+  payDelay:z.number().int().min(0).max(3),
+}).refine(p=>new Set(p.centres.map(c=>c.id)).size===p.centres.length,'Identificadores de centro duplicados en el perfil');
+export type WorkProfile=z.infer<typeof workProfileSchema>;
 export const gradeDateSchema=z.object({grade:z.union([z.literal(1),z.literal(2),z.literal(3),z.literal(4),z.literal(5)]),from:date});
 export const settingsSchema = z.object({
+  savedWorkProfiles:z.array(workProfileSchema).max(20).default([]),activeWorkProfileId:z.string().min(1).max(100).nullable().default(null),
   profileComplete:z.boolean().default(false), residencyEnd:date.nullable().default(null),
   gradeDates:z.array(gradeDateSchema).max(5).default([]), centres:z.array(centreSchema).max(30).default([]),
   fiscalYear:z.number().int().min(2000).max(2099), residencyStart: date, salaryBase: money.max(10000), complements: z.array(money.max(10000)).length(5),
@@ -28,11 +38,12 @@ export const settingsSchema = z.object({
   annualGrossOverride: money.nullable(), annualSSOverride: money.nullable(),
   accumulatedThrough: month.nullable(), accumulatedGross: money, accumulatedWithheld: money, accumulatedSS:money.nullable().default(null),
 }).superRefine((s,ctx)=>{
+ if(new Set(s.savedWorkProfiles.map(p=>p.id)).size!==s.savedWorkProfiles.length||s.savedWorkProfiles.some(p=>p.id==='mfyc-fjd'))ctx.addIssue({code:'custom',message:'Los perfiles propios necesitan identificadores únicos y distintos de los predeterminados'});
  if(s.residencyEnd&&s.residencyEnd<s.residencyStart)ctx.addIssue({code:'custom',message:'El fin de residencia no puede preceder al inicio'});
  if(new Set(s.centres.map(c=>c.id)).size!==s.centres.length)ctx.addIssue({code:'custom',message:'Identificadores de centro duplicados'});
  const grades=[...s.gradeDates].sort((a,b)=>a.from.localeCompare(b.from));
  if(new Set(grades.map(g=>g.grade)).size!==grades.length||new Set(grades.map(g=>g.from)).size!==grades.length||grades.some((g,i)=>g.from<s.residencyStart||(i>0&&g.grade<=grades[i-1].grade)))ctx.addIssue({code:'custom',message:'Revisa las fechas y el orden de los años de residencia'});
- if(s.profileComplete&&(s.centres.length===0||grades.length===0||grades[0]?.grade!==1||grades[0]?.from!==s.residencyStart))ctx.addIssue({code:'custom',message:'Completa el centro y las fechas de residencia antes de calcular'});
+ if(s.profileComplete&&(!s.centres.some(c=>!c.archived)||grades.length===0||grades[0]?.grade!==1||grades[0]?.from!==s.residencyStart))ctx.addIssue({code:'custom',message:'Completa al menos un centro activo y las fechas de residencia antes de calcular'});
 }).refine(s=>new Set(s.rateVigencies.map(v=>v.from)).size===s.rateVigencies.length,'Cada vigencia debe comenzar en una fecha distinta').refine(s=>s.contributionMax>=s.ccMin && s.contributionMax>=s.atMin,'La base máxima debe superar a las mínimas');
 export const shiftSchema = z.object({
   id:z.string().min(1).max(200), date, title:z.string().min(1).max(180), centre:z.string().min(1).max(100),
@@ -55,6 +66,7 @@ export type MonthInput=z.infer<typeof monthSchema>;
 export type State=z.infer<typeof stateSchema>;
 export const blankMonth=():MonthInput=>({receiptHashes:[],vacationDays:0,vacationOverride:null,extraOverride:null,otherGross:0,ssOverride:null,taxOverride:null,guardGrossOverride:null,actual:null});
 export const defaultSettings:Settings={
+  savedWorkProfiles:[],activeWorkProfileId:null,
   profileComplete:false,residencyEnd:null,gradeDates:[],centres:[],
   fiscalYear:2026,residencyStart:'2026-01-01',salaryBase:1387.24,complements:[138.31,249.29,388.01,526.74,665.46],
   ratesBefore:[{labour:12.50,festive:14.87,special:29.74},{labour:15,festive:17.36,special:34.72},{labour:17.49,festive:19.85,special:39.70},{labour:19.99,festive:22.33,special:44.66},{labour:19.99,festive:22.33,special:44.66}],

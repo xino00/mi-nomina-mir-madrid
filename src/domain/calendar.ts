@@ -58,7 +58,8 @@ export function parseCalendar(text:string,year:number,s:Settings){
  const ambiguous=shifts.filter(x=>detectShiftTitle(x.title,s).ambiguous).length;if(ambiguous)notes.push(`${ambiguous} eventos tienen un horario ambiguo. Revisa sus horas antes de confirmarlos.`);
  if(year!==2026)notes.push('Festivos locales y autonómicos verificados solo para 2026. Revisa los de este ejercicio.');
  notes.push(`Se importan guardias desde el ${from.split('-').reverse().join('/')} hasta el 31/12/${year}, según el retraso de cobro configurado. Los salientes no son guardias.`);
- return {shifts:shifts.sort((a,b)=>a.date.localeCompare(b.date)),notes,observations,from,until};
+ // Reconciliation needs the same centre context; it never enters saved state.
+ return {shifts:shifts.sort((a,b)=>a.date.localeCompare(b.date)),notes,observations,from,until,centreContext:{centres:structuredClone(s.centres)}};
 }
 export function mergeShifts(existing:Shift[],incoming:Shift[],replace=false){
  const result=[...existing];let added=0,skipped=0,updated=0;
@@ -70,22 +71,22 @@ export function mergeShifts(existing:Shift[],incoming:Shift[],replace=false){
  return {shifts:result.sort((a,b)=>a.date.localeCompare(b.date)),added,skipped,updated};
 }
 
-export type Proposal={id:string;kind:'new'|'modified'|'cancelled'|'missing'|'manualMatch'|'ambiguous'|'unchanged';existingId?:string;incoming?:Shift;current?:Shift;detail:string;action:'keep'|'add'|'update'|'link'|'exclude'};
-function reconcileIncoming(existing:Shift[],incoming:Shift):Proposal{
+export type Proposal={id:string;kind:'new'|'modified'|'cancelled'|'missing'|'manualMatch'|'ambiguous'|'unchanged';existingId?:string;incoming?:Shift;current?:Shift;detail:string;action:'keep'|'add'|'update'|'link'|'exclude';needsCentreReview?:boolean};
+function reconcileIncoming(existing:Shift[],incoming:Shift,s?:Pick<Settings,'centres'>):Proposal{
+ const detected=detectShiftTitle(incoming.title,s),needsCentreReview=incoming.centre==='unassigned'&&detected.ambiguous;
  const byKey=existing.filter(x=>incoming.sourceKey&&x.sourceKey===incoming.sourceKey);
  const candidates=byKey.length?byKey:existing.filter(x=>!x.sourceKey&&incoming.sourceSignature&&x.sourceSignature===incoming.sourceSignature);
- if(candidates.length>1)return {id:incoming.id,kind:'ambiguous',incoming,detail:'Varios registros comparten la identidad de este evento. Revisa las guardias existentes antes de importarlo.',action:'keep'};
+ if(candidates.length>1)return {id:incoming.id,kind:'ambiguous',incoming,detail:'Varios registros comparten la identidad de este evento. Revisa las guardias existentes antes de importarlo.',action:'keep',needsCentreReview};
  const current=candidates[0];
  if(current){
   const changes=(['date','title','centre','hours','type'] as const).filter(k=>current[k]!==incoming[k]);
-  const kind=incoming.status==='excluded'&&current.status!=='excluded'?'cancelled':changes.length?'modified':'unchanged';
-  return {id:incoming.id,kind,existingId:current.id,current,incoming,detail:changes.map(k=>`${k}: ${current[k]} → ${incoming[k]}`).join(' · '),action:'keep'};
+  const kind=incoming.status==='excluded'&&current.status!=='excluded'?'cancelled':needsCentreReview?'ambiguous':changes.length?'modified':'unchanged';
+  return {id:incoming.id,kind,existingId:current.id,current,incoming,detail:[...(needsCentreReview?[detected.reason]:[]),...changes.map(k=>`${k}: ${current[k]} → ${incoming[k]}`)].join(' · '),action:'keep',needsCentreReview};
  }
  // An unspecified hospital cannot rule out a manual guard on the same day.
  const manual=existing.filter(x=>!x.sourceKey&&x.date===incoming.date&&(x.centre===incoming.centre||x.centre==='unassigned'||incoming.centre==='unassigned'));
  const candidate=manual.length===1?manual[0]:undefined;
- const uncertainHours=incoming.centre==='unassigned'&&detectShiftTitle(incoming.title).ambiguous;
- return {id:incoming.id,kind:manual.length>1||uncertainHours?'ambiguous':candidate?'manualMatch':'new',existingId:candidate?.id,current:candidate,incoming,detail:manual.length?'Hay una guardia manual el mismo día. Vincular conserva sus correcciones.':uncertainHours?'El título no permite decidir si se aplica el horario laborable de Torrelodones. Revisa las horas.':'Nueva guardia detectada.',action:manual.length||incoming.status==='excluded'||uncertainHours?'keep':'add'};
+ return {id:incoming.id,kind:manual.length>1||needsCentreReview?'ambiguous':candidate?'manualMatch':'new',existingId:candidate?.id,current:candidate,incoming,detail:manual.length?'Hay una guardia manual el mismo día. Vincular conserva sus correcciones.':needsCentreReview?detected.reason:'Nueva guardia detectada.',action:manual.length||incoming.status==='excluded'||needsCentreReview?'keep':'add',needsCentreReview};
 }
 
 export function reconcileCalendar(existing:Shift[],parsed:ReturnType<typeof parseCalendar>,sourceCalendar=''):Proposal[]{
@@ -93,7 +94,7 @@ export function reconcileCalendar(existing:Shift[],parsed:ReturnType<typeof pars
  const moved=parsed.observations.filter(o=>o.shift&&(o.date<parsed.from||o.date>=parsed.until)&&existing.some(x=>x.sourceKey===o.key)).map(o=>o.shift!);
  for(const original of [...parsed.shifts,...moved]){
   const incoming={...original,sourceCalendar};
-  const proposal=reconcileIncoming(existing,incoming);
+  const proposal=reconcileIncoming(existing,incoming,parsed.centreContext);
   if(proposal.existingId)matched.add(proposal.existingId);
   proposals.push(proposal);
  }
@@ -115,6 +116,7 @@ export function applyCalendarDecisions(existing:Shift[],decisions:Proposal[]){
   if(d.existingId)used.add(d.existingId);
   if(d.action==='exclude'&&index>=0){result[index]={...result[index],status:'excluded'};excluded++;continue;}
   if(!d.incoming)throw new Error('Falta la propuesta de calendario.');
+  if(d.needsCentreReview&&(d.action==='add'||d.action==='update')&&d.incoming.centre==='unassigned')throw new Error('Selecciona el centro de la guardia ambigua antes de añadirla o actualizarla.');
   const incoming=shiftSchema.parse(d.incoming);if((d.action==='link'||d.action==='update')&&incoming.sourceKey&&result.some((x,i)=>i!==index&&x.sourceKey===incoming.sourceKey))throw new Error('El evento ya está vinculado a otra guardia.');
   if(d.action==='add'){
    if(result.some(x=>x.id===incoming.id||(incoming.sourceKey&&x.sourceKey===incoming.sourceKey)))throw new Error('Este evento ya está vinculado. Lee de nuevo el calendario.');

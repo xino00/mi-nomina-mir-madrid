@@ -9,6 +9,8 @@ import {calendarService,type CalendarStatus} from './services/calendar';
 import {openDocument,saveDocument} from './services/documents';
 import {toCsv} from './services/csv';
 import {isNative} from './platform/device';
+import {applyWorkProfile} from './domain/work-profiles';
+import {WorkProfiles} from './WorkProfiles';
 import {Profile} from './Profile';
 import {Settings} from './Settings';
 import {ShiftEditor,MonthEditor,ReceiptEditor} from './Editors';
@@ -17,7 +19,7 @@ import {Simulation} from './Simulation';
 import {Panel,Line,Notice,Empty,Modal,errorMessage,Check} from './ui';
 
 type Tab='payroll'|'shifts'|'year'|'simulation'|'settings';
-type Overlay={kind:'shift';shift:Shift}|{kind:'receipt'|'month'|'calendar'|'profile'|'history'}|{kind:'backup';backup:ReturnType<typeof parseBackup>};
+type Overlay={kind:'shift';shift:Shift}|{kind:'receipt'|'month'|'calendar'|'profile'|'workProfiles'|'history'}|{kind:'backup';backup:ReturnType<typeof parseBackup>};
 const tabs:{id:Tab;label:string;icon:typeof Wallet}[]=[{id:'payroll',label:'Nómina',icon:Wallet},{id:'shifts',label:'Guardias',icon:CalendarDays},{id:'year',label:'Año',icon:ChartNoAxesCombined},{id:'simulation',label:'Simular',icon:Calculator},{id:'settings',label:'Ajustes',icon:SlidersHorizontal}];
 const currentMonth=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid',year:'numeric',month:'2-digit'}).format(new Date());
 
@@ -41,7 +43,7 @@ export default function App(){
  const autoCalendar=useCallback(async()=>{const l=live.current;if(!l.data?.state.settings.profileComplete||l.overlay||l.busy||l.tab==='settings'||document.visibilityState==='hidden')return;try{const result=await calendarService.read(Number(l.month.slice(0,4)));if(result){adopt(result);setCalendarNews(result.proposals.filter(p=>p.kind!=='unchanged').length);if(result.added)setNotice(`${result.added} guardias añadidas como pendientes.`);await refreshStatus();}}catch{setNotice('No se pudo actualizar el calendario. Puedes continuar sin conexión o volver a leerlo desde Guardias.');}},[adopt,refreshStatus]);
  useEffect(()=>{if(data?.state.settings.profileComplete)void autoCalendar();},[data?.state.settings.profileComplete,month,autoCalendar]);
  useEffect(()=>{const focus=()=>void autoCalendar();window.addEventListener('focus',focus);let alive=true;const nativeListener=isNative()?NativeApp.addListener('appStateChange',({isActive})=>{if(isActive&&alive)void autoCalendar();}):null;return()=>{alive=false;window.removeEventListener('focus',focus);void nativeListener?.then(h=>h.remove());};},[autoCalendar]);
- function closeOverlay(){const type=live.current.overlay?.kind;if(type&&['shift','receipt','month','profile'].includes(type)&&!window.confirm('¿Cerrar este formulario sin guardar los cambios?'))return;setOverlay(null);}
+ function closeOverlay(){const type=live.current.overlay?.kind;if(type&&['shift','receipt','month','profile','workProfiles'].includes(type)&&!window.confirm('¿Cerrar este formulario sin guardar los cambios?'))return;setOverlay(null);}
  useEffect(()=>{if(!isNative())return;const handle=NativeApp.addListener('backButton',()=>{if(live.current.overlay)closeOverlay();else if(live.current.tab!=='payroll')navigate('payroll');else void NativeApp.exitApp();});return()=>{void handle.then(h=>h.remove());};},[]);
  async function save(next:State,reason:string){if(!data)throw new Error('Datos no cargados.');setBusy(true);setError('');try{const result=await repository.save(next,data.revision,reason);adopt(result);setNotice('Cambios guardados en este dispositivo.');}finally{setBusy(false);}}
  async function run(work:()=>Promise<void>){setBusy(true);setError('');try{await work();}catch(e){setError(errorMessage(e));}finally{setBusy(false);}}
@@ -59,6 +61,7 @@ export default function App(){
  if(overlay.kind==='receipt')return <Modal title="Revisar nómina recibida" onClose={closeOverlay}><ReceiptEditor state={state} month={month} initial={input} busy={busy} onSave={m=>saveMonth(m,'Recibo revisado')}/></Modal>;
  if(overlay.kind==='month')return <Modal title="Extras y ajustes del mes" onClose={closeOverlay}><MonthEditor initial={input} busy={busy} onSave={m=>saveMonth(m,'Ajustes mensuales')}/></Modal>;
  if(overlay.kind==='profile')return <Modal title="Tu residencia" onClose={closeOverlay}><Profile initial={state.settings} busy={busy} onSave={async s=>{await save({...state,settings:s},'Perfil de residencia');setOverlay(null);}}/></Modal>;
+ if(overlay.kind==='workProfiles')return <Modal title="Perfiles de condiciones" onClose={closeOverlay}><WorkProfiles settings={state.settings} busy={busy} onSave={settings=>save({...state,settings},'Biblioteca de perfiles')} onApply={async profile=>{await save(applyWorkProfile(state,profile),'Aplicar perfil de condiciones');setOverlay(null);}}/></Modal>;
  if(overlay.kind==='calendar')return <Modal title="Importar y revisar calendario" onClose={()=>setOverlay(null)}><CalendarPanel year={Number(month.slice(0,4))} state={state} status={status} onStatus={refreshStatus} onSaved={d=>{adopt(d);setCalendarNews(0);}}/></Modal>;
  if(overlay.kind==='backup')return <Modal title="Revisar copia antes de restaurar" onClose={()=>setOverlay(null)}><p>{overlay.backup.summary.shifts} guardias · {overlay.backup.summary.receipts} meses con recibos.</p>{overlay.backup.warnings.map(w=><Notice key={w}>{w}</Notice>)}<Notice>La copia sustituirá tus datos actuales. Se conservará una versión recuperable en el historial. El enlace iCal permanece separado.</Notice><button className="primary" disabled={busy} onClick={()=>void run(async()=>{await save(overlay.backup.state,'Restauración de copia JSON');setOverlay(null);})}>Restaurar esta copia</button></Modal>;
  return <Modal title="Versiones anteriores" onClose={()=>setOverlay(null)}><p className="muted">Restaurar también crea una versión recuperable.</p>{!history.length&&<Empty>Aún no hay versiones anteriores.</Empty>}{history.map(h=><div className="history-row" key={h.revision}><div><strong>{new Date(h.savedAt).toLocaleString('es-ES')}</strong><p className="muted">Antes de: {h.reason}</p></div><button disabled={busy} onClick={()=>{if(window.confirm('¿Restaurar esta versión? Tus datos actuales quedarán en el historial.'))void run(async()=>{adopt(await repository.restore(h.revision,data.revision));setOverlay(null);setNotice('Versión restaurada.');});}}>Restaurar</button></div>)}</Modal>;
@@ -81,7 +84,7 @@ export default function App(){
  {tab==='year'&&<Annual state={state} year={Number(month.slice(0,4))} onMonth={m=>{setMonth(m);setTab('payroll');}} onExport={()=>void exportCsv(true)}/>}
  {tab==='simulation'&&<Simulation state={state} month={month}/>}
  {/* Calendar writes must not remount an open settings draft. */}
- {tab==='settings'&&<Settings key={JSON.stringify(state.settings)} state={state} busy={busy} onSave={s=>save({...state,settings:s},'Reglas y centros')} onDirty={onSettingsDirty} onProfile={()=>{if(mayLeaveSettings())setOverlay({kind:'profile'});}} onExport={()=>void exportJson()} onImport={()=>{if(mayLeaveSettings())void importBackup();}} onHistory={()=>{if(mayLeaveSettings())void openHistory();}}/>}
+ {tab==='settings'&&<Settings key={JSON.stringify(state.settings)} state={state} busy={busy} onSave={s=>save({...state,settings:s},'Reglas y centros')} onDirty={onSettingsDirty} onProfile={()=>{if(mayLeaveSettings())setOverlay({kind:'profile'});}} onWorkProfiles={()=>{if(mayLeaveSettings())setOverlay({kind:'workProfiles'});}} onExport={()=>void exportJson()} onImport={()=>{if(mayLeaveSettings())void importBackup();}} onHistory={()=>{if(mayLeaveSettings())void openHistory();}}/>}
  <p className="workspace-footer"><ShieldCheck size={14}/>Estimación orientativa · Contrasta tu recibo</p></main><nav className="bottom-nav" aria-label="Navegación principal">{tabs.map(({id,label,icon:Icon})=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={21}/><span>{label}</span></button>)}</nav>{renderOverlay()}{alerts}</div>;
 }
 

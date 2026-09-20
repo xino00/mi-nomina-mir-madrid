@@ -6,13 +6,15 @@ La aplicación se distribuye sin perfil personal, nóminas, guardias ni calendar
 
 En Android, una base SQLite en el directorio privado de la app conserva la configuración, guardias, cantidades confirmadas, referencias de importación y hasta veinte versiones anteriores del estado. Las escrituras del estado y su historial se hacen dentro de una transacción. **La base SQLite no tiene cifrado propio activado**; utiliza el aislamiento del almacenamiento de Android.
 
-En la WebApp, IndexedDB del navegador conserva la configuración, guardias, cantidades confirmadas, referencias de importación y hasta veinte versiones anteriores del estado. No comparte almacenamiento con Android ni sincroniza datos entre navegadores o dispositivos. La aplicación no añade cifrado propio a IndexedDB. Las copias JSON permiten trasladar los datos de forma manual entre web y Android.
+En la WebApp, IndexedDB del navegador conserva la configuración, guardias, cantidades confirmadas, referencias de importación y hasta veinte versiones anteriores del estado. No comparte almacenamiento con Android ni sincroniza datos entre navegadores o dispositivos. La aplicación no añade cifrado propio a IndexedDB. Las copias JSON permiten trasladar los datos de forma manual entre versiones compatibles. Las copias nuevas v3, que incluyen perfiles, requieren una aplicación que admita esta versión; la app Android anterior solo admite v1/v2.
 
 El enlace privado iCal tiene un tratamiento separado. En Android se cifra con AES-GCM y una clave Android Keystore y se guarda en una ubicación excluida de copias. En web solo se conserva en memoria durante la sesión: se pierde al recargar o cerrar la página. No se incorpora al JSON exportado en ninguna de las dos versiones.
 
 La importación PDF se procesa dentro del dispositivo. Se guardan únicamente los campos estructurados revisados y el hash para detectar duplicados. No se conserva el PDF original ni su texto identificativo. El lector admite un recibo por archivo, hasta diez páginas y 15 MB; no realiza OCR.
 
 Los eventos importados sí pueden conservar título, centro, fecha, notas y otros metadatos útiles para la conciliación. No incluyas información de pacientes ni de terceras personas en los títulos o notas de guardias.
+
+Los perfiles propios de condiciones (nombre, centros, alias, horarios y calendarios locales) forman parte de tus datos locales y copias JSON. No se publican en GitHub. El perfil predefinido MFyC · FJD contiene condiciones de trabajo y fiestas locales públicas, sin fechas personales, recibos, calendario privado ni datos fiscales del usuario.
 
 ## Cuándo se utiliza la red
 
