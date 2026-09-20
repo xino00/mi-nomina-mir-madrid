@@ -21,16 +21,26 @@ function closeWord(a:string,b:string,max:number){
  return rows[a.length][b.length]<=max;
 }
 
-export function detectShiftTitle(title:string,s?:Settings):{centre:string;label:string;reason:string;ambiguous:boolean}{
+function configuredMatches(title:string,s:Pick<Settings,'centres'>){
+ const normalized=' '+shiftTitleWords(title).join(' ')+' ';
+ return s.centres.filter(c=>!c.archived&&[c.name,...c.aliases].some(alias=>{
+  const word=shiftTitleWords(alias).join(' ');return word.length>0&&normalized.includes(' '+word+' ');
+ }));
+}
+export function detectShiftTitle(title:string,s?:Pick<Settings,'centres'>):{centre:string;label:string;reason:string;ambiguous:boolean}{
  if(s){
-  const normalized=' '+shiftTitleWords(title).join(' ')+' ';
-  const matches=s.centres.filter(c=>[c.name,...c.aliases].some(alias=>{
-   const word=shiftTitleWords(alias).join(' ');return word.length>0&&normalized.includes(' '+word+' ');
-  }));
+  const activeCentres=s.centres.filter(c=>!c.archived);
+  const matches=configuredMatches(title,s);
+  if(matches.length>1)return {centre:'unassigned',label:'Centro por revisar',reason:'El título coincide con varios centros activos. Selecciona el centro para aplicar su horario y sus festivos.',ambiguous:true};
   // Keep a configured municipality when available, but a missing hospital
   // identity does not prevent applying the user's standard guard timetable.
   const historic=detectShiftTitle(title);
-  if(matches.length===0&&!historic.ambiguous&&s.centres.some(c=>c.id===historic.centre))return historic;
+  if(matches.length===0&&!historic.ambiguous&&activeCentres.some(c=>c.id===historic.centre))return historic;
+  if(matches.length===0&&!historic.ambiguous){
+   const compatible=activeCentres.filter(c=>historic.centre==='Hospital'?c.aliases.some(alias=>normalizedShiftTitle(alias)==='hospital'):detectShiftTitle(c.name).centre===historic.centre);
+   if(compatible.length===1)return {...historic,centre:compatible[0].id,label:compatible[0].name};
+   if(compatible.length>1)return {centre:'unassigned',label:'Centro por revisar',reason:'Hay varios centros activos compatibles con el título: selecciona el centro de la guardia.',ambiguous:true};
+  }
   if(matches.length===1)return {centre:matches[0].id,label:matches[0].name,reason:`Centro reconocido: ${matches[0].name}.`,ambiguous:false};
   if(historic.ambiguous)return {centre:'unassigned',label:'Horario por revisar',reason:'El título es ambiguo: revisa si se aplica el horario laborable de Torrelodones.',ambiguous:true};
   const rural=historic.centre==='SAR Torrelodones'||historic.centre==='SAR Cercedilla';
@@ -67,7 +77,7 @@ export function isGuardEventTitle(title:string,s?:Settings){
  if(words.slice(0,index).some(word=>['cambio','cambios','cambiar','elegir','eleccion'].includes(word)))return false;
  // A single-letter abbreviation needs a recognisable guard context.
  if(words[index]==='g'){
-  if(s){const detected=detectShiftTitle(title,s),historic=detectShiftTitle(title);return !detected.ambiguous&&(detected.centre!=='unassigned'||(!historic.ambiguous&&historic.label!=='Hospital'));}
+  if(s){const detected=detectShiftTitle(title,s),historic=detectShiftTitle(title);return configuredMatches(title,s).length>0||(!detected.ambiguous&&(detected.centre!=='unassigned'||(!historic.ambiguous&&historic.label!=='Hospital')));}
   return detectShiftTitle(title).label!=='Hospital';
  }
  return true;

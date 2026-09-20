@@ -28,6 +28,8 @@ La app tarifa las guardias por fecha trabajada y aplica el desfase configurado p
 
 El modelo de IRPF presupone trabajador activo menor de 65 años, situación familiar 3 y sin descendientes. El mínimo configurado del 15 % presupone la relación especial aplicable; no es un mínimo universal. Para otras situaciones se puede introducir un porcentaje manual obtenido con la herramienta oficial o de la nómina correspondiente.
 
+Android 1.1.0 incorpora además **Renta Madrid 2026**, independiente de las retenciones. Incluye las escalas estatal y madrileña, sus mínimos personales, gastos generales, reducción y deducción por trabajo del perfil básico. El mínimo MIR no se aplica al impuesto anual. Las fuentes legales, vigencias, ejemplos y límites revisados el **20/09/2026** están en [IRPF-MADRID-2026.md](IRPF-MADRID-2026.md).
+
 ## Supuestos y pendientes
 
 - **Meses parciales:** el sueldo previsto se prorratea; los límites de cotización siguen siendo mensuales completos. La regla documental de cotización diaria utiliza divisor 30 y días cotizados por tramo, con excepciones. No es equivalente a dividir por los días naturales de cada mes.

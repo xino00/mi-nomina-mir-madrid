@@ -7,3 +7,11 @@
 .net-amount,.metric-row strong,.money-line>span:last-child{white-space:normal;overflow-wrap:anywhere;min-width:0}.money-line>span{min-width:0}.bottom-nav button{min-width:0}.section-title{flex-wrap:wrap}.section-title>*,.metric-row>div{min-width:0}.segmented button{min-width:0;overflow-wrap:anywhere}.workspace-footer{flex-wrap:wrap}
 
 .licenses{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;font-size:11px;line-height:1.7}
+
+.work-profile-summary{border:1px solid var(--green);padding:18px;min-width:0}.work-profile-summary h3{margin-top:0;color:var(--green)}.profile-centres{margin:16px 0 0}.profile-centres>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:13px 0;border-top:1px solid var(--line);align-items:start}.profile-centres dt{font-size:12px}.profile-centres dd{margin:0;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}.profile-centres small{display:block;font-size:10px;margin-top:4px}.profile-centres dd strong{font-weight:500}.work-profile-summary+p{margin-top:12px}
+@media(max-width:370px){.profile-centres>div{grid-template-columns:minmax(0,1fr)}.profile-centres dd{text-align:left}}
+
+/* Keep money intact; move the value to its own row when labels or text grow. */
+.income-tax-panel .money-line{flex-wrap:wrap}
+.income-tax-panel .money-line>span:first-child{flex:1 1 12em;max-width:none}
+.income-tax-panel .money-line>span:last-child{flex:0 0 auto;max-width:100%;margin-left:auto}

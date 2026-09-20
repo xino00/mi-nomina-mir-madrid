@@ -60,7 +60,7 @@ test('guardias, PDF sintético, céntimos, CSV, backup, historial y funcionamien
  await tab(page,'Ajustes');
  const copyPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Guardar copia JSON',exact:true}).click();
  const copyPath=(await copyPromise).path();const copy=JSON.parse(await fs.readFile((await copyPath)!,'utf8'));
- expect(copy.version).toBe(2);expect(copy.state.months['2026-09'].actual.net).toBe(2300.01);expect(JSON.stringify(copy)).not.toContain('private-');
+ expect(copy.version).toBe(4);expect(copy.state.months['2026-09'].actual.net).toBe(2300.01);expect(JSON.stringify(copy)).not.toContain('private-');
  await page.getByRole('button',{name:'Versiones anteriores',exact:true}).click();
  await expect(page.locator('.history-row')).not.toHaveCount(0);
  page.once('dialog',d=>d.accept());await page.locator('.history-row').first().getByRole('button',{name:'Restaurar',exact:true}).click();

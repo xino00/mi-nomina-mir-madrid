@@ -4,7 +4,7 @@ La aplicación se distribuye sin perfil personal, nóminas, guardias ni calendar
 
 ## Qué se guarda
 
-En Android, una base SQLite en el directorio privado de la app conserva la configuración, guardias, cantidades confirmadas, referencias de importación y hasta veinte versiones anteriores del estado. Las escrituras del estado y su historial se hacen dentro de una transacción. **La base SQLite no tiene cifrado propio activado**; utiliza el aislamiento del almacenamiento de Android.
+En Android, una base SQLite en el directorio privado de la app conserva la configuración, perfiles propios, calendarios y condiciones fiscales, guardias, cantidades confirmadas, referencias de importación y hasta veinte versiones anteriores del estado. Las escrituras del estado y su historial se hacen dentro de una transacción. **La base SQLite no tiene cifrado propio activado**; utiliza el aislamiento del almacenamiento de Android.
 
 El enlace privado iCal tiene un tratamiento separado: se cifra con AES-GCM y una clave Android Keystore, y se guarda en una ubicación excluida de copias. No se incorpora al JSON exportado. En la vista de navegador la dirección solo se conserva en la sesión; el resto de datos usa IndexedDB y no comparte almacenamiento con Android.
 
@@ -22,6 +22,7 @@ No hay analítica, publicidad, servidor propio ni conexión de cálculo con Chat
 
 - La copia JSON y el CSV exportados **contienen información personal y salarial introducida por quien usa la app**. No están cifrados por la aplicación. Elige una ubicación privada y no los añadas al repositorio.
 - El JSON no contiene el enlace privado iCal ni los PDF originales; después de restaurarlo hay que conectar el calendario aparte.
+- Las copias v4 incluyen perfiles y condiciones fiscales y permiten trasladar datos entre Android 1.1.0 y la WebApp compatible. No se envían automáticamente a otros dispositivos ni a GitHub.
 - El historial interno es una recuperación local, no una copia externa. Al restaurar un estado se conserva una versión recuperable del anterior.
 - Las copias automáticas de Android y la transferencia automática de datos están desactivadas. Desinstalar o borrar el almacenamiento elimina los datos de la app; los archivos exportados permanecen donde se guardaron.
 - Los selectores de documentos de Android permiten elegir cada archivo. La app no solicita acceso general al almacenamiento ni conserva permisos persistentes sobre los documentos elegidos.
