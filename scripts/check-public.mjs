@@ -5,7 +5,7 @@ import {projectRoot,publicFiles} from './public-files.mjs';
 
 const rootFiles=new Set(['.gitignore','.gitattributes','.nvmrc','.java-version','README.md','LICENSE','CONTRIBUIR.md','CONTRIBUTING.md','PUBLIC-MANIFEST.json','SECURITY.md','package.json','package-lock.json','capacitor.config.ts','vite.config.ts','tsconfig.json','playwright.config.ts','index.html']);
 const folders=new Set(['src','tests','scripts','docs','public','android','.github']);
-const forbiddenFolders=new Set(['node_modules','dist','build','.gradle','.git','.test-artifacts','.playwright-cli','releases','entrega']);
+const forbiddenFolders=new Set(['node_modules','dist','dist-web','build','.gradle','.git','.test-artifacts','.playwright-cli','releases','entrega']);
 const fixturePdfs=new Set(['nomina-sintetica.pdf','dos-recibos.pdf','once-paginas.pdf'].map(name=>`tests/fixtures/${name}`));
 const secretPatterns=[
  ['clave privada',/-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/],

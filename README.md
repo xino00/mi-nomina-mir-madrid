@@ -1,6 +1,10 @@
 # Mi nómina · MIR Madrid
 
-Calculadora Android para **médicos internos residentes R1–R5 del Servicio Madrileño de Salud (SERMAS), en la Comunidad de Madrid**. Permite prever la nómina, registrar guardias y contrastar lo estimado con lo cobrado. Funciona sin cuenta y permite calcular y editar sin conexión.
+Calculadora para **médicos internos residentes R1–R5 del Servicio Madrileño de Salud (SERMAS), en la Comunidad de Madrid**. Permite prever la nómina, registrar guardias y contrastar lo estimado con lo cobrado. Esta rama ofrece una **WebApp alternativa a la app Android**, con el mismo motor de cálculo y sin necesidad de cuenta.
+
+**[Abrir Mi nómina WebApp](https://xino00.github.io/mi-nomina-mir-madrid/)** · [Uso web y funcionamiento sin conexión](docs/WEBAPP.md)
+
+Los datos se guardan en el navegador utilizado y no se sincronizan con Android ni con otros dispositivos. Después de una primera carga completa con conexión, la WebApp permite abrir, calcular, editar e importar archivos sin conexión. Conserva una copia JSON externa para trasladar o recuperar tus datos.
 
 El ámbito actual es la residencia de **Medicina, a jornada completa y en situación ordinaria**. No incluye EIR, FIR, PIR, otras titulaciones, otras comunidades autónomas ni regímenes salariales ajenos al SERMAS. Es un proyecto independiente, sin afiliación oficial al SERMAS, al BOCM o a la AEAT.
 
@@ -18,16 +22,20 @@ Las previsiones y los recibos confirmados se conservan por separado: cambiar una
 
 ## Empezar a usarla
 
-1. Instala un APK de una procedencia en la que confíes, o compílalo siguiendo [Android](docs/ANDROID.md). Requiere **Android 8 o posterior** y **Android System WebView/Chrome 119 o posterior**.
+1. Abre la [WebApp](https://xino00.github.io/mi-nomina-mir-madrid/) con conexión y deja que termine la carga inicial. Para la aplicación nativa, consulta [Android](docs/ANDROID.md).
 2. Configura inicio y fin previstos de residencia, fechas de cambio R1–R5, centros y municipio. La app comienza sin nóminas ni guardias personales precargadas.
 3. Revisa horarios, festivos, desfase de cobro e IRPF. Los calendarios incompletos requieren revisión; un centro no hereda automáticamente los festivos de Madrid capital.
 4. Añade tus guardias o importa un archivo ICS. No es obligatorio que cada evento identifique el hospital. La regla inicial de horas es 17 h laborables y 24 h en fines de semana/festivos, con 11 h en Torrelodones laborable; Cercedilla usa el horario general. **Son ajustes operativos de la app, no una regla horaria universal del BOCM.** Comprueba tu jornada y corrige las horas necesarias; los cambios manuales se conservan.
 5. Introduce lo cobrado o importa un PDF y revisa su extracción antes de guardarlo. El lector no hace OCR: los documentos escaneados o no reconocidos permiten entrada manual.
-6. Exporta periódicamente una copia JSON desde **Ajustes → Copias e historial**. Hay veinte versiones anteriores recuperables dentro del dispositivo. **Desinstalar elimina los datos locales**; la copia externa permite recuperarlos.
+6. Exporta periódicamente una copia JSON desde **Ajustes → Copias e historial**. Hay veinte versiones anteriores recuperables dentro del navegador. **Borrar los datos del sitio elimina tanto los datos como ese historial**; la copia externa permite recuperarlos. Evita usar navegación privada para conservar tus registros.
+
+Para recibir una actualización, guarda los cambios, cierra todas las pestañas de Mi nómina y vuelve a abrirla con conexión. Una versión nueva no fuerza la recarga de un formulario abierto.
 
 ## Conectar tus guardias de Google Calendar
 
-**Obtén el enlace desde un PC, abriendo Google Calendar en el navegador.** Después lo conectarás en Mi nómina desde el móvil.
+**En la WebApp recomendamos importar un archivo ICS** desde **Guardias → Calendario → Importar archivo ICS**. Repite la importación cuando cambie tu calendario. El enlace directo de Google puede ser bloqueado por el navegador por las restricciones de acceso entre sitios (CORS); además, solo se conserva en memoria durante la sesión y se pierde al recargar o cerrar la página.
+
+Si quieres probar la conexión, obtén el enlace desde un PC, abriendo Google Calendar en el navegador:
 
 1. En el PC, abre [Google Calendar](https://calendar.google.com/) con la cuenta donde tienes tus guardias.
 2. Pulsa la rueda dentada de arriba a la derecha y entra en **Configuración**.
@@ -38,7 +46,7 @@ Las previsiones y los recibos confirmados se conservan por separado: cambiar una
 
 El enlace permite leer ese calendario: trátalo como una contraseña y no lo publiques ni lo incluyas en capturas. Si lo compartes por error, cámbialo desde Google Calendar y vuelve a conectar la app.
 
-Mi nómina solo lee el calendario; no modifica sus eventos. Consulta los cambios al abrir o volver a la app, con un intervalo mínimo de cinco minutos. También puedes pulsar **Leer cambios** en esa misma pantalla. Si falla la conexión, tus datos guardados se conservan. No hay sincronización entre dispositivos ni actualización en segundo plano garantizada.
+Mi nómina solo lee el calendario; no modifica sus eventos. Mientras haya un enlace conectado, consulta los cambios al abrir o volver a la app, con un intervalo mínimo de cinco minutos. También puedes pulsar **Leer cambios** en esa misma pantalla. Si falla la conexión, tus datos guardados se conservan. No hay sincronización entre dispositivos ni actualización en segundo plano garantizada.
 
 Si prefieres no conectar un enlace, utiliza **Guardias → Calendario → Importar archivo ICS**. Esta importación es puntual: tendrás que repetirla para incorporar cambios. Si llevas una copia a otro móvil, tendrás que conectar allí el enlace de nuevo; no se incluye en el JSON.
 
@@ -55,15 +63,15 @@ El repositorio utiliza tablas públicas y datos de prueba sintéticos. No incluy
 
 ## Privacidad
 
-Los cálculos y los datos se guardan en tu dispositivo. No hay cuenta, analítica ni servidor propio. Los PDF se procesan localmente y no se conserva su original ni el texto identificativo.
+Los cálculos se realizan en tu dispositivo y los datos web se guardan en IndexedDB del navegador. No hay cuenta, analítica ni servidor propio de datos. GitHub Pages sirve los archivos de la WebApp y recibe las peticiones normales de alojamiento; la aplicación no le envía tus nóminas, guardias ni copias JSON. Los PDF se procesan localmente y no se conserva su original ni el texto identificativo.
 
-La única conexión opcional de datos es la lectura del calendario de Google que configures. Su enlace se protege con Android Keystore y no se incluye en copias JSON. Las fuentes externas se abren en el navegador al solicitarlas. Las copias JSON/CSV sí contienen los datos que introduzcas: guárdalas como documentos privados. Más detalles en [privacidad](docs/PRIVACIDAD.md).
+La lectura opcional del calendario solicita directamente a Google el enlace que configures. En web solo se conserva durante la sesión; en Android se protege con Android Keystore. No se incluye en copias JSON. Las fuentes externas se abren al solicitarlas. Las copias JSON/CSV sí contienen los datos que introduzcas: guárdalas como documentos privados. Más detalles en [privacidad](docs/PRIVACIDAD.md).
 
 ## Ayuda y contribuciones
 
 Para comunicar un fallo o proponer mejoras, consulta [cómo contribuir](CONTRIBUIR.md). Usa ejemplos inventados y evita adjuntar nóminas, calendarios o copias personales.
 
-La documentación técnica está separada: [desarrollo](docs/DESARROLLO.md), [compilación e instalación Android](docs/ANDROID.md), [pruebas realizadas](docs/VERIFICACION.md) y [publicación en GitHub](docs/PUBLICAR.md).
+La documentación técnica está separada: [WebApp y GitHub Pages](docs/WEBAPP.md), [desarrollo](docs/DESARROLLO.md), [compilación e instalación Android](docs/ANDROID.md), [pruebas realizadas](docs/VERIFICACION.md) y [publicación en GitHub](docs/PUBLICAR.md).
 
 ## Licencia
 

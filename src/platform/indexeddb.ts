@@ -3,11 +3,11 @@ import type { HistoryRow, PayrollStore, StateRow, StoreTransaction } from './sto
 function request<T>(operation: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     operation.onsuccess = () => resolve(operation.result);
-    operation.onerror = () => reject(operation.error ?? new Error('No se pudo acceder a los datos de la vista previa.'));
+    operation.onerror = () => reject(operation.error ?? new Error('No se pudo acceder a los datos del navegador.'));
   });
 }
 
-/** Browser-only preview data; this database is never used by the Android app. */
+/** Browser-local data; keep the existing name to preserve data from earlier web previews. */
 export class IndexedDbStore implements PayrollStore {
   private database?: Promise<IDBDatabase>;
 
@@ -25,7 +25,7 @@ export class IndexedDbStore implements PayrollStore {
         resolve(operation.result);
       };
       operation.onerror = () => reject(operation.error ?? new Error('No se pudo abrir la base de datos.'));
-      operation.onblocked = () => reject(new Error('Cierra otras pestañas de la vista previa para abrir los datos.'));
+      operation.onblocked = () => reject(new Error('Cierra otras pestañas de Mi nómina para abrir los datos.'));
     });
     return this.database;
   }

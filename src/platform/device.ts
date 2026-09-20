@@ -10,4 +10,4 @@ export interface NominaDevicePlugin {
 
 export const NominaDevice = registerPlugin<NominaDevicePlugin>('NominaDevice');
 export const isNative = () => Capacitor.isNativePlatform();
-export const storageNotice = 'Vista previa en navegador: los datos se guardan en este navegador y no se sincronizan con la app Android.';
+export const storageNotice = 'WebApp: los datos se guardan en este navegador y no se sincronizan con Android. Guarda una copia JSON antes de borrar los datos del sitio o cambiar de dispositivo.';

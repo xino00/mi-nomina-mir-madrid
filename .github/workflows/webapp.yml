@@ -1,0 +1,51 @@
+name: Publicar WebApp
+on:
+  push:
+    branches: [webapp]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: webapp-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check:public
+      - run: npm test
+      - run: npm run build
+      - run: npx --no-install playwright install --with-deps chromium
+      - name: Comprobar los recorridos existentes
+        run: |
+          NOMINA_CHROME_PATH="$(node --input-type=module -e 'import {chromium} from "@playwright/test"; process.stdout.write(chromium.executablePath())')" npm run test:e2e
+      - run: npm run build:web
+      - name: Comprobar la WebApp en subcarpeta y sin conexión
+        run: |
+          NOMINA_CHROME_PATH="$(node --input-type=module -e 'import {chromium} from "@playwright/test"; process.stdout.write(chromium.executablePath())')" npm run test:e2e:web
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist-web
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/webapp'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

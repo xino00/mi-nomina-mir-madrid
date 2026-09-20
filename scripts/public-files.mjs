@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 
 export const projectRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const excluded=new Set(['.git','node_modules','dist','build','.gradle','.idea','.vscode','.test-artifacts','.playwright-cli','test-results','playwright-report','coverage','releases','release','entrega','__pycache__','capacitor-cordova-android-plugins']);
+const excluded=new Set(['.git','node_modules','dist','dist-web','build','.gradle','.idea','.vscode','.test-artifacts','.playwright-cli','test-results','playwright-report','coverage','releases','release','entrega','__pycache__','capacitor-cordova-android-plugins']);
 function generated(name){return name.startsWith('android/app/src/main/assets/')||name==='android/app/src/main/res/xml/config.xml'||name==='android/local.properties';}
 
 export function publicFiles(){
