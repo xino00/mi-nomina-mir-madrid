@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {ArrowRight,Download,ShieldCheck} from 'lucide-react';
 import {settingsSchema,buildGradeDates,type Settings,type Centre} from './domain/model';
 import {allWorkProfiles,WorkProfileSummary} from './WorkProfiles';
+import {fiscalSettingsForProfile} from './domain/work-profiles';
 import {Field,NumberField,Notice,SafeForm,Submit,ErrorText,errorMessage} from './ui';
 
 export function Profile({initial,onSave,busy,onImport,onCancel}:{initial:Settings;onSave:(s:Settings)=>Promise<void>;busy:boolean;onImport?:()=>void;onCancel?:()=>void}){
@@ -20,7 +21,7 @@ export function Profile({initial,onSave,busy,onImport,onCancel}:{initial:Setting
  const id=e.target.value,profile=allWorkProfiles(initial).find(p=>p.id===id);setSelected(id);
  if(profile){const count=profile.residencyYears;setYears(count);let gradeDates=s.gradeDates;
  if(start){gradeDates=buildGradeDates(start,count);const d=new Date(`${start}T12:00:00Z`);d.setUTCFullYear(d.getUTCFullYear()+count);d.setUTCDate(d.getUTCDate()-1);setEnd(d.toISOString().slice(0,10));}
- set({...s,centres:structuredClone(profile.centres),defaultLabourHours:profile.defaultLabourHours,defaultFestiveHours:profile.defaultFestiveHours,payDelay:profile.payDelay,activeWorkProfileId:profile.id,gradeDates});
+ set({...s,...fiscalSettingsForProfile(profile),centres:structuredClone(profile.centres),defaultLabourHours:profile.defaultLabourHours,defaultFestiveHours:profile.defaultFestiveHours,payDelay:profile.payDelay,activeWorkProfileId:profile.id,gradeDates});
  }else set({...s,activeWorkProfileId:null});
  }}><option value="">Configurar desde cero</option>{allWorkProfiles(initial).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
  {selectedProfile&&<WorkProfileSummary profile={selectedProfile}/>}</>}

@@ -4,7 +4,7 @@ import {defaultSettings,workProfileSchema,type Centre,type Settings,type WorkPro
 import {builtinWorkProfiles,profileFromSettings,profileMatchesSettings} from './domain/work-profiles';
 import {standardShiftHours} from './domain/engine';
 import {CentreEditor} from './CentreEditor';
-import {Field,NumberField,Notice,SafeForm,Submit,ErrorText,errorMessage} from './ui';
+import {Field,NumberField,Notice,SafeForm,Submit,ErrorText,errorMessage,Check} from './ui';
 
 export const allWorkProfiles=(settings:Settings)=>[...builtinWorkProfiles,...settings.savedWorkProfiles];
 export function workProfileLabel(settings:Settings){
@@ -19,10 +19,11 @@ export function WorkProfileSummary({profile}:{profile:WorkProfile}){
   <h3>{profile.name}</h3>
   <p className="muted">{profile.residencyYears} años de referencia · Cobro de guardias: {profile.payDelay===0?'mismo mes':`${profile.payDelay} mes(es) después`}</p>
   <dl className="profile-centres">{profile.centres.map(c=><div key={c.id}>
-   <dt>{c.name}<small>{c.municipality}</small></dt>
+   <dt>{c.name}<small>{c.municipality} · Festivos locales: {c.holidayMunicipality??c.municipality}</small></dt>
    <dd><strong>{standardShiftHours(c.id,'labour',conditions)} h / {standardShiftHours(c.id,'festive',conditions)} h</strong><small>laborable / festiva</small></dd>
   </div>)}</dl>
-  {profile.id==='mfyc-fjd'&&<p className="muted">Curas, MED/BOXES y Polis se reconocen como FJD; Cerce y Torrelo, como sus centros. Incluye festivos locales de 2026. Horarios configurables según tu jornada.</p>}
+  {profile.id==='mfyc-fjd'&&<p className="muted">Curas, MED/BOXES y Polis se reconocen como FJD; Cerce y Torrelo, como sus centros. Calendario Comunidad + Madrid capital en todos los centros: 15 de mayo y 9 de noviembre de 2026. Es la condición elegida para este perfil.</p>}
+  {profile.fiscalPreset?<Notice>Incluye retención AEAT estimada, mínimo MIR del 15 %, y Renta Madrid 2026. Asalariado soltero, sin hijos, menor de 65 años; declaración individual, sin discapacidad ni familiares a cargo. Sin movilidad geográfica ni deducciones personales adicionales. Al aplicar se activa esta configuración fiscal; los importes reales y acumulados se conservan.</Notice>:<p className="muted">Este perfil mantiene tu configuración fiscal actual.</p>}
  </section>;
 }
 
@@ -43,7 +44,8 @@ export function WorkProfiles({settings,busy,onSave,onApply}:{settings:Settings;b
  }
  if(draft)return <WorkProfileEditor initial={draft} busy={busy} onCancel={()=>setDraft(null)} onSave={store}/>;
  return <div className="stack">
-  <p className="muted">En uso: <strong>{workProfileLabel(settings)}</strong>. Los perfiles guardan centros, horarios y retraso de cobro. Tus fechas, IRPF, sueldo y recibos se mantienen aparte.</p>
+  <p className="muted">En uso: <strong>{workProfileLabel(settings)}</strong>. Los perfiles guardan centros, calendarios, horarios, retraso de cobro y, opcionalmente, condiciones fiscales. Tus fechas, sueldo e importes registrados se conservan.</p>
+  {settings.activeWorkProfileId==='mfyc-fjd'&&!profileMatchesSettings(builtinWorkProfiles[0],settings)&&<Notice>El perfil FJD disponible incluye calendario Madrid capital y Renta Madrid. Revisa sus condiciones y pulsa «Aplicar perfil» para incorporarlas; tus ajustes actuales aún se conservan.</Notice>}
   <Field label="Perfil de condiciones"><select value={profile.id} onChange={e=>{setSelected(e.target.value);setError('');setNotice('');}}>
    <optgroup label="Predeterminados">{builtinWorkProfiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
    {!!settings.savedWorkProfiles.length&&<optgroup label="Mis perfiles">{settings.savedWorkProfiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>}
@@ -79,6 +81,7 @@ function WorkProfileEditor({initial,busy,onSave,onCancel}:{initial:WorkProfile;b
   <NumberField label="Horas generales en laborable" value={draft.defaultLabourHours} min={1} max={24} onChange={v=>set('defaultLabourHours',v??0)}/>
   <NumberField label="Horas generales en festivo" value={draft.defaultFestiveHours} min={1} max={24} onChange={v=>set('defaultFestiveHours',v??0)}/>
   <NumberField label="Retraso de cobro del perfil (meses)" value={draft.payDelay} min={0} max={3} onChange={v=>set('payDelay',v??0)}/>
+  <Check label="Incluir fiscalidad básica de Madrid" checked={!!draft.fiscalPreset} onChange={v=>set('fiscalPreset',v?'madrid-single-employee':undefined)} hint="Al aplicar: retención AEAT estimada con mínimo MIR del 15 % y Renta Madrid para soltero menor de 65 años sin hijos. Desmarcado: mantiene la fiscalidad que tengas en uso."/>
   {draft.centres.map((c,i)=><CentreEditor key={c.id} centre={c} onChange={value=>set('centres',draft.centres.map((old,j)=>j===i?value:old))} canRemove={draft.centres.length>1} onRemove={()=>set('centres',draft.centres.filter((_,j)=>j!==i))}/>)}
   <button type="button" disabled={draft.centres.length>=30} onClick={()=>set('centres',[...draft.centres,newCentre()])}><Plus size={18}/>Añadir centro al perfil</button>
   <ErrorText error={error}/><div className="actions"><button type="button" disabled={busy} onClick={onCancel}>Cancelar edición</button><Submit busy={busy}>Guardar plantilla</Submit></div>

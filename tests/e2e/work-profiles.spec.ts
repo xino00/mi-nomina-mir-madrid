@@ -84,14 +84,14 @@ test('MFyC FJD configura tres centros y reconoce curas, Cerce y Torrelo con sus 
   await expect(centre.getByLabel('Municipio',{exact:true})).toHaveValue(municipality);
   await expect(centre.getByRole('combobox',{name:'Horario del centro',exact:true})).toHaveValue('general');
  }
- await expect(page.getByRole('group',{name:'SAR Cercedilla',exact:true}).getByLabel(/^Festivos locales 2026/)).toHaveValue('2026-01-20\n2026-09-08');
- await expect(page.getByRole('group',{name:'SAR Torrelodones',exact:true}).getByLabel(/^Festivos locales 2026/)).toHaveValue('2026-07-16\n2026-08-14');
+ await expect(page.getByRole('group',{name:'SAR Cercedilla',exact:true}).getByLabel(/^Festivos locales 2026/)).toHaveValue('2026-05-15\n2026-11-09');
+ await expect(page.getByRole('group',{name:'SAR Torrelodones',exact:true}).getByLabel(/^Festivos locales 2026/)).toHaveValue('2026-05-15\n2026-11-09');
 
  await tab(page,'Guardias');
  await page.getByRole('button',{name:'Añadir',exact:true}).click();
  const centreSelect=page.getByRole('combobox',{name:'Centro (opcional)',exact:true});
  await expect(centreSelect.locator('option')).toHaveText([fjd,'SAR Cercedilla','SAR Torrelodones','Horario de hospital / según descripción']);
- for(const [centre,labourHours,localHoliday] of [['Hospital','17','2026-05-15'],['SAR Cercedilla','17','2026-09-08'],['SAR Torrelodones','11','2026-08-14']]){
+ for(const [centre,labourHours,localHoliday] of [['Hospital','17','2026-05-15'],['SAR Cercedilla','17','2026-05-15'],['SAR Torrelodones','11','2026-11-09']]){
   await centreSelect.selectOption(centre);
   await page.getByLabel('Fecha trabajada',{exact:true}).fill('2026-08-10');
   await expect(page.getByLabel('Horas abonables',{exact:true})).toHaveValue(labourHours);
@@ -107,7 +107,7 @@ test('MFyC FJD configura tres centros y reconoce curas, Cerce y Torrelo con sus 
   ['20260810','Guardia curas laborable',fjd,'Hospital',17],
   ['20260811','Guardia Cerce laborable','SAR Cercedilla','SAR Cercedilla',17],
   ['20260812','Guardia Torrelo laborable','SAR Torrelodones','SAR Torrelodones',11],
-  ['20260814','Guardia Torrelo festivo local','SAR Torrelodones','SAR Torrelodones',24],
+  ['20260814','Guardia Torrelo laborable según perfil','SAR Torrelodones','SAR Torrelodones',11],
   ['20260815','Guardia curas festivo',fjd,'Hospital',24],
   ['20260816','Guardia Cerce festivo','SAR Cercedilla','SAR Cercedilla',24],
   ['20260822','Guardia Torrelo festivo','SAR Torrelodones','SAR Torrelodones',24],
@@ -171,7 +171,7 @@ test('aplicar, editar, eliminar y recuperar un perfil conserva guardias y recibo
  await tab(page,'Nómina');
  await expect(page.locator('.net-amount')).toContainText('2300,01');
  const applied=await exportCopy(page);
- expect(applied.version).toBe(3);
+ expect(applied.version).toBe(4);
  expect(applied.state.settings.savedWorkProfiles).toHaveLength(1);
  expect(applied.state.settings.savedWorkProfiles[0]).toMatchObject({id:ownId,name:ownName});
  expect(applied.state.settings.savedWorkProfiles[0].centres[0]).toMatchObject({scheduleMode:'custom',labourHours:12.5,festiveHours:20});
@@ -218,7 +218,7 @@ test('aplicar, editar, eliminar y recuperar un perfil conserva guardias y recibo
  await expect(page.getByRole('dialog')).toHaveCount(0);
  expect((await exportCopy(page)).state).toEqual(edited.state);
 
- await upload(page,'Restaurar copia','perfil-v3-sintetico.json','application/json',JSON.stringify(applied));
+ await upload(page,'Restaurar copia','perfil-v4-sintetico.json','application/json',JSON.stringify(applied));
  await expect(page.getByRole('dialog')).toContainText('2 guardias · 1 meses con recibos.');
  await page.getByRole('button',{name:'Restaurar esta copia',exact:true}).click();
  await expect(page.getByRole('dialog')).toHaveCount(0);

@@ -243,3 +243,31 @@ test('recupera los recursos offline tras perder la caché sin perder IndexedDB',
   await expect(page.getByLabel('Nombre del centro', {exact: true})).toHaveValue('Hospital WebApp sintético');
   expect(external).toEqual([]);
 });
+
+test('FJD conserva calendario Madrid y Renta en una reapertura sin conexión',async({page,context})=>{
+  const external=await forbidThirdParties(context);
+  await ready(page);
+  await page.getByRole('combobox',{name:'Perfil inicial',exact:true}).selectOption('mfyc-fjd');
+  await page.getByLabel('Inicio de residencia',{exact:true}).fill('2025-06-01');
+  await page.getByRole('button',{name:'Empezar',exact:true}).click();
+  await page.getByLabel('Mes de cobro seleccionado').fill('2026-09');
+  await selectTab(page,'Año');
+  const renta=page.locator('section.panel').filter({has:page.getByRole('heading',{name:'Renta Madrid · 2026',exact:true})});
+  const before=await renta.locator('.money-line').allTextContents();
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByLabel('Mes de cobro seleccionado').fill('2026-09');
+  await selectTab(page,'Año');
+  await expect(renta.locator('.money-line')).toHaveText(before);
+  await selectTab(page,'Ajustes');
+  for(const name of ['Fundación Jiménez Díaz','SAR Cercedilla','SAR Torrelodones']){
+    const centre=page.getByRole('group',{name,exact:true});
+    await expect(centre.getByLabel('Municipio del calendario',{exact:true})).toHaveValue('Madrid');
+    await expect(centre.getByLabel(/^Festivos locales 2026/)).toHaveValue('2026-05-15\n2026-11-09');
+  }
+  const download=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Guardar copia JSON',exact:true}).click();
+  const copy=JSON.parse(await readFile((await(await download).path())!,'utf8'));
+  expect(copy.version).toBe(4);expect(copy.state.settings.fiscalPreset).toBe('madrid-single-employee');
+  expect(external).toEqual([]);
+});

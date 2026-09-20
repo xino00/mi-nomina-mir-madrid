@@ -4,10 +4,12 @@ const money = z.number().finite().min(0).max(1000000);
 const month = z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/);
 export const dateSchema = z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])-\d{2}$/).refine(s => { const d=new Date(s+'T12:00:00Z'); return Number.isFinite(d.valueOf()) && d.toISOString().slice(0,10)===s; },'Fecha inválida');
 const date = dateSchema;
+const fiscalPresetSchema=z.literal('madrid-single-employee');
 const rateRow = z.object({ labour: money.max(100), festive: money.max(100), special: money.max(200) });
 export const rates2027=[{labour:13.78,festive:16.39,special:32.78},{labour:16.54,festive:19.14,special:38.28},{labour:19.28,festive:21.88,special:43.76},{labour:22.04,festive:24.62,special:49.24},{labour:22.04,festive:24.62,special:49.24}];
 export const centreSchema = z.object({
   id:z.string().min(1).max(100), name:z.string().min(1).max(100), municipality:z.string().min(1).max(100),
+  holidayMunicipality:z.string().trim().min(1).max(100).optional(),
   labourHours:z.number().finite().min(.25).max(48), festiveHours:z.number().finite().min(.25).max(48),
   scheduleMode:z.enum(['general','custom']).optional(),
   archived:z.boolean().optional(),
@@ -20,10 +22,12 @@ export const workProfileSchema=z.object({
   residencyYears:z.union([z.literal(4),z.literal(5)]),centres:z.array(centreSchema).min(1).max(30),
   defaultLabourHours:z.number().finite().min(1).max(24),defaultFestiveHours:z.number().finite().min(1).max(24),
   payDelay:z.number().int().min(0).max(3),
+  fiscalPreset:fiscalPresetSchema.optional(),
 }).refine(p=>new Set(p.centres.map(c=>c.id)).size===p.centres.length,'Identificadores de centro duplicados en el perfil');
 export type WorkProfile=z.infer<typeof workProfileSchema>;
 export const gradeDateSchema=z.object({grade:z.union([z.literal(1),z.literal(2),z.literal(3),z.literal(4),z.literal(5)]),from:date});
 export const settingsSchema = z.object({
+  fiscalPreset:fiscalPresetSchema.nullable().default(null),
   savedWorkProfiles:z.array(workProfileSchema).max(20).default([]),activeWorkProfileId:z.string().min(1).max(100).nullable().default(null),
   profileComplete:z.boolean().default(false), residencyEnd:date.nullable().default(null),
   gradeDates:z.array(gradeDateSchema).max(5).default([]), centres:z.array(centreSchema).max(30).default([]),
@@ -66,6 +70,7 @@ export type MonthInput=z.infer<typeof monthSchema>;
 export type State=z.infer<typeof stateSchema>;
 export const blankMonth=():MonthInput=>({receiptHashes:[],vacationDays:0,vacationOverride:null,extraOverride:null,otherGross:0,ssOverride:null,taxOverride:null,guardGrossOverride:null,actual:null});
 export const defaultSettings:Settings={
+  fiscalPreset:null,
   savedWorkProfiles:[],activeWorkProfileId:null,
   profileComplete:false,residencyEnd:null,gradeDates:[],centres:[],
   fiscalYear:2026,residencyStart:'2026-01-01',salaryBase:1387.24,complements:[138.31,249.29,388.01,526.74,665.46],
@@ -82,7 +87,9 @@ export const sources=[
  {title:'Festivos locales de 2026 · BOCM 12/12/2025',url:'https://www.bocm.es/boletin/CM_Orden_BOCM/2025/12/12/BOCM-20251212-34.PDF',note:'Madrid: 15 de mayo y 9 de noviembre. Cercedilla: 20 de enero y 8 de septiembre. Torrelodones: 16 de julio y 14 de agosto.'},
  {title:'Calendario laboral de Madrid 2026',url:'https://www.comunidad.madrid/empleo/calendario-laboral-comunidad-madrid-municipios',note:'Festivos autonómicos y locales por municipio. La detección de otros ejercicios queda pendiente de revisar.'},
  {title:'Retribuciones MIR, extras y vacaciones · BOCM 09/02/2026',url:'https://www.bocm.es/boletin/CM_Orden_BOCM/2026/02/09/BOCM-20260209-6.PDF',note:'Artículo 28 y anexo V.6. Sueldo y tarifas previas verificados.'},
- {title:'Retenciones AEAT 2026',url:'https://sede.agenciatributaria.gob.es/Sede/Retenciones.shtml',note:'Estimación para trabajador activo, menor de 65 años, situación familiar 3 sin descendientes. No calcula la declaración de Renta.'},
+ {title:'Retenciones AEAT 2026',url:'https://sede.agenciatributaria.gob.es/Sede/Retenciones.shtml',note:'Previsión de retenciones para trabajador activo, menor de 65 años, situación familiar 3 sin descendientes. Se calcula por separado de la Renta anual.'},
+ {title:'IRPF estatal · Ley 35/2006',url:'https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764',note:'Renta 2026 básica: arts. 19, 20, 57 y 63 y DA 61. Solo rendimientos del trabajo, declaración individual y menor de 65 años.'},
+ {title:'IRPF de Madrid · Decreto Legislativo 1/2010',url:'https://www.boe.es/buscar/act.php?id=BOCM-m-2010-90068',note:'Arts. 1 y 2: escala autonómica y mínimo personal madrileño. Sin deducciones personales adicionales.'},
  {title:'Cotizaciones 2026 · BOE 31/03/2026',url:'https://www.boe.es/boe/dias/2026/03/31/pdfs/BOE-A-2026-7296.pdf',note:'Bases mínima/máxima, CC, MEI y solidaridad. Desempleo y formación según modalidad contractual; confirma los porcentajes aplicables.'},
  {title:'Exportar Google Calendar',url:'https://support.google.com/calendar/answer/37111?hl=es',note:'Importación por archivo .ics o dirección secreta iCal. El enlace privado se conecta por separado y no se incluye en las copias.'},
 ];

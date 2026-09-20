@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {blankMonth,buildGradeDates,defaultState,legacyCentres,stateSchema,workProfileSchema,type Centre,type Shift,type State,type WorkProfile} from './model';
 import {applyCalendarDecisions,eventToShift,parseCalendar,reconcileCalendar} from './calendar';
-import {normalizeShiftHours,standardShiftHours,updateShiftSchedule} from './engine';
+import {classifyShiftDay,normalizeShiftHours,standardShiftHours,updateShiftSchedule} from './engine';
 import {exportBackup,parseBackup} from './backup';
 import {applyWorkProfile,builtinWorkProfiles,profileFromSettings,profileMatchesSettings} from './work-profiles';
 import {detectShiftTitle} from './shift-names';
@@ -71,7 +71,7 @@ describe('Plantillas de condiciones de trabajo',()=>{
   state.shifts=[guard(state,{hours:13,hoursMode:'custom',customRate:25,gradeOverride:2,sourceNote:'Horas confirmadas'})];
   state.months['2026-09']={...blankMonth(),guardGrossOverride:500,actual:{gross:3000,ss:200,withheld:400,guardGross:500,otherDeductions:0,net:2400,source:'Sintético'}};
   state.appliedCalendarImports=['consumed'];state.closedShiftMonths=['2026-08'];state.importedAt='2026-09-01';
-  const original=structuredClone(state),next=applyWorkProfile(state,own({payDelay:2}));
+  const original=structuredClone(state),next=applyWorkProfile(state,own({payDelay:2,fiscalPreset:undefined}));
   expect(next.settings.activeWorkProfileId).toBe('own-profile');expect(next.settings.payDelay).toBe(2);
   for(const key of ['residencyStart','residencyEnd','gradeDates','taxMode','manualTaxPercent','salaryBase','accumulatedThrough','accumulatedGross','accumulatedWithheld','savedWorkProfiles'] as const)expect(next.settings[key]).toEqual(state.settings[key]);
   for(const key of ['shifts','months','appliedCalendarImports','closedShiftMonths','importedAt'] as const)expect(next[key]).toEqual(state[key]);
@@ -167,12 +167,39 @@ describe('Plantillas de condiciones de trabajo',()=>{
  });
 });
 
-describe('Copias v3 con perfiles y horarios propios',()=>{
+describe('Copias v4 con perfiles y horarios propios',()=>{
+ it('reutiliza identificadores de centros protegidos generados por v3',()=>{
+  const centre={...structuredClone(builtinWorkProfiles[0].centres[0]),holidayMunicipality:undefined};
+  const profile=own({defaultLabourHours:19,centres:[centre]}),state=ready();
+  state.settings.defaultLabourHours=19;
+  // ID produced by v3 for this synthetic profile and definition, before adding calendar jurisdiction.
+  const legacyId='wp-18yy5zn-9a5lu4';
+  state.settings.centres=[{...centre,id:legacyId}];
+  state.shifts=[guard(state,{centre:legacyId,hours:19})];
+  const next=applyWorkProfile(state,profile);
+  expect(next.settings.centres).toHaveLength(1);expect(next.settings.centres[0].id).toBe(legacyId);
+  expect(next.shifts).toEqual(state.shifts);
+ });
+
+ it('v3 conserva fiscalidad y festivos antiguos hasta reaplicar FJD; v4 conserva las nuevas condiciones',()=>{
+  const old=JSON.parse(JSON.stringify(ready()));delete old.settings.fiscalPreset;
+  old.settings.activeWorkProfileId='mfyc-fjd';old.settings.taxMode='manual';old.settings.manualTaxPercent=23;
+  const loaded=parseBackup({format:'mi-nomina-guardias',version:3,state:old});
+  expect(loaded.migrated).toBe(true);expect(loaded.state.settings.fiscalPreset).toBeNull();
+  expect(loaded.state.settings.taxMode).toBe('manual');
+  expect(loaded.state.settings.centres[1].localHolidays['2026']).toContain('2026-09-08');
+  expect(profileMatchesSettings(builtinWorkProfiles[0],loaded.state.settings)).toBe(false);
+  const next=applyWorkProfile(loaded.state,builtinWorkProfiles[0]);
+  next.settings.savedWorkProfiles=[profileFromSettings(next.settings,'FJD propia','saved')];
+  expect(next.settings.savedWorkProfiles[0].fiscalPreset).toBe('madrid-single-employee');
+  expect(parseBackup(exportBackup(next))).toMatchObject({version:4,migrated:false,state:next});
+ });
+
  it('exporta y restaura perfiles propios, selección, horarios y registros sin pérdida',()=>{
   const state=ready();state.settings.centres[0].scheduleMode='custom';state.settings.centres[0].labourHours=12;
   const profile=profileFromSettings(state.settings,'Mi centro','custom');state.settings.savedWorkProfiles=[profile];state.settings.activeWorkProfileId=profile.id;state.shifts=[guard(state)];
   const result=parseBackup(exportBackup(state));
-  expect(result.version).toBe(3);expect(result.migrated).toBe(false);expect(result.state).toEqual(state);
+  expect(result.version).toBe(4);expect(result.migrated).toBe(false);expect(result.state).toEqual(state);
   expect(standardShiftHours('Hospital','labour',result.state.settings)).toBe(12);
  });
 
@@ -185,7 +212,42 @@ describe('Copias v3 con perfiles y horarios propios',()=>{
  });
 
  it('rechaza versiones futuras antes de interpretar o reemplazar el estado',()=>{
-  expect(()=>parseBackup({format:'mi-nomina-guardias',version:4,state:ready()})).toThrow(/Versión/);
+  expect(()=>parseBackup({format:'mi-nomina-guardias',version:5,state:ready()})).toThrow(/Versión/);
+ });
+});
+
+describe('Calendario y fiscalidad del perfil FJD',()=>{
+ it('aplica Comunidad y Madrid capital en los tres centros, manteniendo sus municipios físicos',()=>{
+  const {settings}=applyWorkProfile(ready(),builtinWorkProfiles[0]);
+  for(const c of settings.centres){
+   expect(c.holidayMunicipality).toBe('Madrid');
+   for(const date of ['2026-05-15','2026-11-09']){
+    expect(classifyShiftDay(date,c.id,settings)).toEqual({type:'festive',reason:'Festivo local de Madrid (2026).',needsReview:false});
+    expect(standardShiftHours(c.id,'festive',settings)).toBe(24);
+   }
+   for(const md of ['01-01','01-06','04-02','04-03','05-01','05-02','08-15','10-12','11-02','12-07','12-08','12-25'])expect(classifyShiftDay(`2026-${md}`,c.id,settings).type).not.toBe('labour');
+   for(const date of ['2026-01-20','2026-09-08','2026-07-16','2026-08-14'])expect(classifyShiftDay(date,c.id,settings).type).toBe('labour');
+   expect(classifyShiftDay('2026-12-24',c.id,settings)).toMatchObject({type:'special',needsReview:true});
+   expect(classifyShiftDay('2027-05-15',c.id,settings).needsReview).toBe(true);
+  }
+  expect(settings.centres.map(c=>c.municipality)).toEqual(['Madrid','Cercedilla','Torrelodones']);
+ });
+
+ it('conserva el calendario y las horas de guardias anteriores y activa fiscalidad sin borrar importes',()=>{
+  const state=ready();
+  state.shifts=[guard(state,{centre:'SAR Cercedilla',date:'2026-09-08',type:'festive',hours:24})];
+  Object.assign(state.settings,{taxMode:'manual',manualTaxPercent:23,minimumTaxPercent:2,personalMinimum:7000,geographicalMobility:true,annualGrossOverride:45000,annualSSOverride:3000,accumulatedThrough:'2026-08',accumulatedGross:28000,accumulatedWithheld:5000,accumulatedSS:1800});
+  state.months['2026-08']={...blankMonth(),actual:{gross:3000,ss:200,withheld:400,guardGross:500,otherDeductions:0,net:2400,source:'Synthetic'}};
+  const next=applyWorkProfile(state,builtinWorkProfiles[0]);
+  expect(next.settings).toMatchObject({fiscalPreset:'madrid-single-employee',taxMode:'estimate',minimumTaxPercent:15,personalMinimum:5550,geographicalMobility:false,manualTaxPercent:23,annualGrossOverride:45000,annualSSOverride:3000,accumulatedThrough:'2026-08',accumulatedGross:28000,accumulatedWithheld:5000,accumulatedSS:1800});
+  expect(next.shifts).toEqual(state.shifts);expect(next.months).toEqual(state.months);
+  expect(next.settings.centres.find(c=>c.id==='SAR Cercedilla')).toMatchObject({archived:true,localHolidays:{'2026':['2026-01-20','2026-09-08']}});
+  const active=next.settings.centres.find(c=>!c.archived&&c.municipality==='Cercedilla')!;
+  expect(classifyShiftDay('2026-09-08',active.id,next.settings).type).toBe('labour');
+  expect(profileMatchesSettings(builtinWorkProfiles[0],next.settings)).toBe(true);
+  expect(applyWorkProfile(next,builtinWorkProfiles[0])).toEqual(next);
+  next.settings.taxMode='manual';expect(profileMatchesSettings(builtinWorkProfiles[0],next.settings)).toBe(false);
+  expect(profileFromSettings(next.settings,'Manual','manual').fiscalPreset).toBeUndefined();
  });
 });
 

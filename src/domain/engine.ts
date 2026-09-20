@@ -1,5 +1,6 @@
 import { blankMonth, type State, type Settings, type Shift } from './model';
 import { detectShiftTitle } from './shift-names';
+import {estimateMadridIncomeTax} from './income-tax';
 export const round=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
 export const eur=(n:number)=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n);
 export const monthName=(s:string)=>new Intl.DateTimeFormat('es-ES',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(s+'-15T12:00:00Z'));
@@ -24,7 +25,7 @@ export function classifyShiftDay(date:string,centre:string,s?:Settings):{type:Sh
  const needsReview=year!=='2026'||!configured||!dates?.length;
  const review=needsReview?' Calendario municipal incompleto: revisa el tipo de guardia.':'';
  if(['01-01','01-06','12-24','12-25','12-31'].includes(md))return {type:'special',reason:'Fecha propuesta como festivo especial; revisa la tarifa.'+review,needsReview:true};
- if(dates?.includes(date))return {type:'festive',reason:`Festivo local de ${configured!.municipality} (${year}).`+review,needsReview};
+ if(dates?.includes(date))return {type:'festive',reason:`Festivo local de ${configured!.holidayMunicipality??configured!.municipality} (${year}).`+review,needsReview};
  if(year==='2026'&&regional2026.includes(md))return {type:'festive',reason:'Festivo de la Comunidad de Madrid (2026).'+review,needsReview};
  if(day===0||day===6)return {type:'festive',reason:(day===6?'Sábado.':'Domingo.')+review,needsReview};
  return {type:'labour',reason:'Día entre semana.'+review,needsReview};
@@ -142,7 +143,9 @@ export function yearCalculation(state:State,year:number){
   return result;
  });
  const withheld=round(months.reduce((n,m)=>n+m.withheld,0));
- return {year,months,gross:cashGross,ss:cashSS,otherDeductions:round(months.reduce((n,m)=>n+m.otherDeductions,0)),tax,percent:basePercent,withheld,net:round(months.reduce((n,m)=>n+m.net,0)),effectivePercent:cashGross?round(withheld/cashGross*100):0,actualMonths:months.filter(m=>m.actual).length,patternMonths:months.filter(m=>!m.actual&&!m.allocated&&m.guards.source==='pattern').length,accumulatedSSIsEstimate:!!through&&s.accumulatedSS===null,accumulationConflict:!!through&&((!unresolved.length&&(Math.abs(confirmed('gross')-s.accumulatedGross)>.025||Math.abs(confirmed('withheld')-s.accumulatedWithheld)>.025||(s.accumulatedSS!==null&&Math.abs(confirmed('ss')-s.accumulatedSS)>.025)))||confirmed('gross')>s.accumulatedGross||confirmed('withheld')>s.accumulatedWithheld||(s.accumulatedSS!==null&&confirmed('ss')>s.accumulatedSS))};
+ const incomeTax=s.fiscalPreset?estimateMadridIncomeTax(year,tax.gross,tax.ss,withheld):null;
+ const recordedWithholding=round(months.filter(m=>m.actual||m.allocated).reduce((n,m)=>n+m.withheld,0));
+ return {year,months,gross:cashGross,ss:cashSS,otherDeductions:round(months.reduce((n,m)=>n+m.otherDeductions,0)),tax,incomeTax,recordedWithholding,forecastWithholding:round(withheld-recordedWithholding),percent:basePercent,withheld,net:round(months.reduce((n,m)=>n+m.net,0)),effectivePercent:cashGross?round(withheld/cashGross*100):0,actualMonths:months.filter(m=>m.actual).length,patternMonths:months.filter(m=>!m.actual&&!m.allocated&&m.guards.source==='pattern').length,accumulatedSSIsEstimate:!!through&&s.accumulatedSS===null,accumulationConflict:!!through&&((!unresolved.length&&(Math.abs(confirmed('gross')-s.accumulatedGross)>.025||Math.abs(confirmed('withheld')-s.accumulatedWithheld)>.025||(s.accumulatedSS!==null&&Math.abs(confirmed('ss')-s.accumulatedSS)>.025)))||confirmed('gross')>s.accumulatedGross||confirmed('withheld')>s.accumulatedWithheld||(s.accumulatedSS!==null&&confirmed('ss')>s.accumulatedSS))};
 }
 export function calculate(state:State,month:string){
  const annual=yearCalculation(state,Number(month.slice(0,4))),raw=annual.months.find(m=>m.month===month)!,s=state.settings,input=state.months[month]??blankMonth();

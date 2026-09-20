@@ -1,8 +1,8 @@
 import { buildGradeDates, legacyCentres, stateSchema, type State } from './model';
 
 export const BACKUP_FORMAT='mi-nomina-guardias';
-// Older Android versions reject v3 instead of silently dropping custom profiles.
-export const BACKUP_VERSION=3;
+// Older apps reject v4 instead of silently dropping fiscal/calendar conditions.
+export const BACKUP_VERSION=4;
 export function migrateLegacyState(input:unknown):State {
  if(!input||typeof input!=='object')throw new Error('La copia no contiene un estado válido.');
  const legacy=structuredClone(input) as Record<string,unknown>;
@@ -26,13 +26,13 @@ export function exportBackup(state:State):string {
  return JSON.stringify({format:BACKUP_FORMAT,version:BACKUP_VERSION,exportedAt:new Date().toISOString(),state:cleanState(state)},null,2);
 }
 
-export function parseBackup(input:string|unknown):{state:State;version:1|2|3;migrated:boolean;summary:{shifts:number;receipts:number};warnings:string[]} {
+export function parseBackup(input:string|unknown):{state:State;version:1|2|3|4;migrated:boolean;summary:{shifts:number;receipts:number};warnings:string[]} {
  if(typeof input==='string'&&new TextEncoder().encode(input).length>2_100_000)throw new Error('La copia supera 2 MB.');
  let parsed:unknown;
  try{parsed=typeof input==='string'?JSON.parse(input):input;}catch{throw new Error('El archivo no contiene JSON válido.');}
  if(!parsed||typeof parsed!=='object')throw new Error('Formato de copia no compatible.');
  const document=parsed as Record<string,unknown>;
- if(document.format!==BACKUP_FORMAT||(document.version!==1&&document.version!==2&&document.version!==3))throw new Error('Versión de copia no compatible; no se ha cambiado ningún dato.');
+ if(document.format!==BACKUP_FORMAT||(document.version!==1&&document.version!==2&&document.version!==3&&document.version!==4))throw new Error('Versión de copia no compatible; no se ha cambiado ningún dato.');
  const state=cleanState(document.version===1?migrateLegacyState(document.state):stateSchema.parse(document.state));
- return {state,version:document.version,migrated:document.version!==3,summary:{shifts:state.shifts.length,receipts:Object.values(state.months).filter(m=>m.actual).length},warnings:document.version===1?['Se han conservado los centros originales. Revisa municipio y fechas efectivas de cambio de año.','La copia anterior no incluía fin de residencia: se proponen cinco años. Corrige la fecha en Ajustes.']:document.version===2?['La copia v2 conserva los horarios generales anteriores. Los perfiles propios y horarios por centro se guardan a partir de la versión 3.']:[]};
+ return {state,version:document.version,migrated:document.version!==4,summary:{shifts:state.shifts.length,receipts:Object.values(state.months).filter(m=>m.actual).length},warnings:document.version===1?['Se han conservado los centros originales. Revisa municipio y fechas efectivas de cambio de año.','La copia anterior no incluía fin de residencia: se proponen cinco años. Corrige la fecha en Ajustes.']:document.version===2?['La copia v2 conserva los horarios generales anteriores. Los perfiles propios y horarios por centro se guardan a partir de la versión 3.']:document.version===3?['Se conservan el calendario y el IRPF de la copia v3. Aplica de nuevo MFyC · FJD para incorporar sus nuevas condiciones de Madrid.']:[]};
 }
